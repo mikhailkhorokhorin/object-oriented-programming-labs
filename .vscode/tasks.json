@@ -1,0 +1,70 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "labNumber",
+            "type": "pickString",
+            "description": "Select lab to build",
+            "options": [
+                "lab1",
+                "lab2",
+                "lab3",
+                "lab4",
+                "lab5",
+                "lab6",
+                "lab7"
+            ]
+        }
+    ],
+    "tasks": [
+        {
+            "label": "CMake Configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                ".",
+                "-B",
+                "build",
+                "-DCMAKE_C_COMPILER=gcc-14",
+                "-DCMAKE_CXX_COMPILER=g++-14",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+            ]
+        },
+        {
+            "label": "Build selected Lab",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build",
+                "--target",
+                "${input:labNumber}_main"
+            ],
+            "dependsOn": "CMake Configure",
+            "group": "build"
+        },
+        {
+            "label": "Build selected Lab Tests",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build",
+                "--target",
+                "${input:labNumber}_tests"
+            ],
+            "dependsOn": "CMake Configure",
+            "group": "build"
+        },
+        {
+            "label": "Build selected Lab + Tests",
+            "dependsOn": [
+                "Build selected Lab",
+                "Build selected Lab Tests"
+            ],
+            "dependsOrder": "sequence",
+            "group": "build"
+        }
+    ]
+}

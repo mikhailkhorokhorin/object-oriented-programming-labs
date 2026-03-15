@@ -1,0 +1,87 @@
+#pragma once
+
+#include <cmath>
+#include <iostream>
+
+#include "figure.hpp"
+
+template <Scalar T>
+class Pentagon : public Figure<T> {
+   public:
+    Pentagon(const Point<T>& point1, const Point<T>& point2, const Point<T>& point3,
+             const Point<T>& point4, const Point<T>& point5) {
+        this->size_ = 5;
+        this->points_ = std::make_unique<Point<T>[]>(5);
+
+        this->points_[0] = point1;
+        this->points_[1] = point2;
+        this->points_[2] = point3;
+        this->points_[3] = point4;
+        this->points_[4] = point5;
+    }
+
+    Pentagon() = default;
+
+    Pentagon(const Pentagon& other) {
+        this->size_ = other.size_;
+        this->points_ = std::make_unique<Point<T>[]>(this->size_);
+
+        for (size_t i = 0; i < this->size_; ++i)
+            this->points_[i] = other.points_[i];
+    }
+
+    Point<T> getCenter() const override {
+        T cx = 0, cy = 0;
+        for (size_t i = 0; i < this->size_; ++i) {
+            cx += this->points_[i].x;
+            cy += this->points_[i].y;
+        }
+
+        return Point<T>(cx / this->size_, cy / this->size_);
+    }
+
+    double getArea() const override {
+        double area = 0.0;
+
+        for (size_t i = 0; i < this->size_; ++i) {
+            const Point<T>& p1 = this->points_[i];
+            const Point<T>& p2 = this->points_[(i + 1) % this->size_];
+            area += (p1.x * p2.y - p2.x * p1.y);
+        }
+
+        return std::abs(area) / 2.0;
+    }
+
+    void print(std::ostream& os) const override {
+        for (size_t i = 0; i < this->size_; ++i)
+            os << "(" << this->points_[i].x << "," << this->points_[i].y << ") ";
+        os << "Area = " << getArea() << " ";
+        os << "Center: (" << getCenter().x << "," << getCenter().y << ")"  << std::endl;
+    }
+
+    void read(std::istream& is) override {
+        this->size_ = 5;
+        this->points_ = std::make_unique<Point<T>[]>(5);
+
+        for (size_t i = 0; i < this->size_; ++i)
+            is >> this->points_[i].x >> this->points_[i].y;
+    }
+
+    bool operator==(const Pentagon<T>& other) const {
+        for (size_t i = 0; i < 5; ++i)
+            if (!(this->points_[i] == other.points_[i]))
+                return false;
+        return true;
+    }
+
+    bool operator==(const Figure<T>& other) const override {
+        const Pentagon<T>* pentagon = dynamic_cast<const Pentagon<T>*>(&other);
+        if (!pentagon)
+            return false;
+        return *this == *pentagon;
+    }
+
+    std::unique_ptr<Figure<T>> clone() const override {
+        return std::make_unique<Pentagon<T>>(*this);
+    }
+};
