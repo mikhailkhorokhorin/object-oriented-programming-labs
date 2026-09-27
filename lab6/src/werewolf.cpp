@@ -2,17 +2,13 @@
 
 #include "visitor.hpp"
 
-Werewolf::Werewolf(const std::string& name, const Point& pos) : NPC(name, pos) {
+Werewolf::Werewolf(const std::string& name, const Point& position) : NPC(name, position) {
 }
 
 std::string Werewolf::getType() const {
     return "Werewolf";
 }
 
-bool Werewolf::kills(const NPC& other) const {
-    return other.getType() == "Rogue";
-}
-
-void Werewolf::accept(Visitor& v, NPC& other) {
-    v.visit(*this, other);
+void Werewolf::accept(Visitor& visitor) {
+    visitor.visit(*this);
 }

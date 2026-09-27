@@ -1,17 +1,17 @@
-include_directories(include)
-
-add_executable(lab2_main
-    main.cpp
-    src/money.cpp
+lab_library(lab2_core
+    SOURCES
+        src/money.cpp
 )
 
-add_executable(lab2_tests
-    tests/unit.cpp
-    tests/money.cpp
-    src/money.cpp
+lab_executable(lab2_main
+    SOURCES app/main.cpp
+    LINK lab2_core
 )
 
-target_link_libraries(lab2_tests GTest::gtest_main)
-
-include(GoogleTest)
-gtest_discover_tests(lab2_tests)
+lab_tests(lab2_tests
+    SOURCES
+        tests/e2e.cpp
+        tests/money.cpp
+    LINK lab2_core
+    BINARIES lab2_main
+)

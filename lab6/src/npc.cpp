@@ -1,16 +1,18 @@
 #include "npc.hpp"
 
-NPC::NPC(std::string name, const Point& pos) : name(std::move(name)), position(pos) {
+#include <utility>
+
+NPC::NPC(std::string name, const Point& position) : name_(std::move(name)), position_(position) {
 }
 
 const std::string& NPC::getName() const {
-    return name;
+    return name_;
 }
 
 const Point& NPC::getPosition() const {
-    return position;
+    return position_;
 }
 
 double NPC::distanceTo(const NPC& other) const {
-    return position.distanceTo(other.position);
+    return position_.distanceTo(other.position_);
 }

@@ -1,34 +1,24 @@
 #pragma once
 
-#include <cmath>
-#include <string>
-#include <vector>
-
+#include "npc.hpp"
 #include "visitor.hpp"
 
-class IObserver;
+class BattleVisitor final : public Visitor {
+public:
+    explicit BattleVisitor(NPC& defender);
 
-struct BattleResult {
-    NPC* dead1 = nullptr;
-    NPC* dead2 = nullptr;
+    void visit(Bear& attacker) override;
+    void visit(Rogue& attacker) override;
+    void visit(Werewolf& attacker) override;
+
+    bool defenderKilled() const;
+
+private:
+    NPC* defender_;
+    bool defenderKilled_ = false;
+
+    template <typename Attacker>
+    void attack();
 };
 
-class BattleVisitor : public Visitor {
-   private:
-    double attackRange;
-    std::vector<IObserver*> observers;
-
-    void notify(const std::string& msg);
-
-   public:
-    explicit BattleVisitor(double range);
-
-    void addObserver(IObserver* obs);
-
-    void visit(Bear& attacker, NPC& defender) override;
-    void visit(Rogue& attacker, NPC& defender) override;
-    void visit(Werewolf& attacker, NPC& defender) override;
-
-   private:
-    BattleResult resolve(NPC& attacker, NPC& defender);
-};
+bool kills(NPC& attacker, NPC& defender);

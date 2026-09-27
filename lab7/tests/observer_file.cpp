@@ -2,28 +2,48 @@
 
 #include <gtest/gtest.h>
 
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
 
-TEST(FileLoggerTest, OnEventWritesToLogTxt) {
+#include "test_support/process.hpp"
+
+TEST(FileLoggerTest, AppendsEventsToConfiguredFile) {
+    const test_support::TempDir dir;
+    const auto path = dir.path() / "battle.log";
+    FileLogger logger(path);
+    EXPECT_EQ(logger.getPath(), path);
+    logger.onEvent("first");
+    logger.onEvent("second");
+    EXPECT_EQ(test_support::readFile(path), "first\nsecond\n");
+}
+
+TEST(FileLoggerTest, DefaultPathIsLogTxt) {
+    const FileLogger logger;
+    EXPECT_EQ(logger.getPath(), "log.txt");
+}
+
+TEST(FileLoggerTest, ConcurrentEventsAreAllWritten) {
+    const test_support::TempDir dir;
+    const auto path = dir.path() / "battle.log";
+    FileLogger logger(path);
     {
-        std::ofstream ofs("log.txt", std::ios::trunc);
-    }
-
-    FileLogger logger;
-    std::string message = "Test log message";
-
-    logger.onEvent(message);
-
-    std::ifstream ifs("log.txt");
-    ASSERT_TRUE(ifs.is_open());
-
-    bool found = false;
-    std::string line;
-    while (std::getline(ifs, line)) {
-        if (line == message) {
-            found = true;
-            break;
+        std::vector<std::jthread> threads;
+        for (int t = 0; t < 4; ++t) {
+            threads.emplace_back([&logger] {
+                for (int i = 0; i < 50; ++i) {
+                    logger.onEvent("event");
+                }
+            });
         }
     }
-
-    EXPECT_TRUE(found);
+    std::istringstream in(test_support::readFile(path));
+    std::string line;
+    int lines = 0;
+    while (std::getline(in, line)) {
+        EXPECT_EQ(line, "event");
+        ++lines;
+    }
+    EXPECT_EQ(lines, 200);
 }

@@ -1,12 +1,13 @@
 #pragma once
 
+#include <string>
+
 #include "npc.hpp"
 
-class Rogue : public NPC {
-   public:
-    Rogue(const std::string& name, const Point& pos);
+class Rogue final : public NPC {
+public:
+    Rogue(const std::string& name, const Point& position);
 
     std::string getType() const override;
-    bool kills(const NPC& other) const override;
-    void accept(Visitor& v, NPC& other) override;
+    void accept(Visitor& visitor) override;
 };

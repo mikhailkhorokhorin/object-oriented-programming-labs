@@ -2,98 +2,76 @@
 
 #include <gtest/gtest.h>
 
-TEST(SquareTest, DefaultConstructor) {
+#include <cmath>
+#include <sstream>
+#include <utility>
+
+#include "rectangle.hpp"
+
+TEST(SquareTest, DefaultHasFourZeroPoints) {
+    const Square square;
+    EXPECT_EQ(square.getSize(), 4U);
+    for (const auto& point : square.getPoints()) {
+        EXPECT_EQ(point, (Point{0, 0}));
+    }
+    EXPECT_DOUBLE_EQ(static_cast<double>(square), 0);
+    EXPECT_EQ(square.getCenter(), (Point{0, 0}));
+}
+
+TEST(SquareTest, AreaAndCenter) {
+    const Square square({0, 0}, {2, 0}, {2, 2}, {0, 2});
+    EXPECT_DOUBLE_EQ(static_cast<double>(square), 4);
+    EXPECT_EQ(square.getCenter(), (Point{1, 1}));
+}
+
+TEST(SquareTest, RotatedSquareArea) {
+    const Square square({1, 0}, {2, 1}, {1, 2}, {0, 1});
+    EXPECT_DOUBLE_EQ(static_cast<double>(square), 2);
+}
+
+TEST(SquareTest, ReadAndPrint) {
     Square square;
-
-    EXPECT_EQ(square.getSize(), 4);
-
-    const Point* points = square.getPoints();
-    Point expected{0, 0};
-
-    for (size_t i = 0; i < 4; ++i)
-        EXPECT_TRUE(points[i] == expected);
+    std::istringstream in("0 0 1 0 1 1 0 1");
+    in >> square;
+    std::ostringstream out;
+    out << square;
+    EXPECT_EQ(out.str(), "(0, 0) (1, 0) (1, 1) (0, 1)");
 }
 
-TEST(SquareTest, ParameterizedConstructor) {
-    Square square({0, 0}, {0, 1}, {1, 1}, {1, 0});
-
-    EXPECT_EQ(square.getSize(), 4);
-
-    const Point* points = square.getPoints();
-    Point point1{0, 0};
-    Point point2{0, 1};
-    Point point3{1, 1};
-    Point point4{1, 0};
-
-    EXPECT_TRUE(points[0] == point1);
-    EXPECT_TRUE(points[1] == point2);
-    EXPECT_TRUE(points[2] == point3);
-    EXPECT_TRUE(points[3] == point4);
+TEST(SquareTest, FailedReadKeepsPoints) {
+    Square square({0, 0}, {1, 0}, {1, 1}, {0, 1});
+    std::istringstream in("5 5 x");
+    in >> square;
+    EXPECT_TRUE(in.fail());
+    EXPECT_EQ(square.getPoints()[0], (Point{0, 0}));
 }
 
-TEST(SquareTest, CopyConstructor) {
-    Square square1({0, 0}, {0, 1}, {1, 1}, {1, 0});
-    Square square2(square1);
-
-    EXPECT_TRUE(square1 == square2);
+TEST(SquareTest, EqualityIgnoresVertexOrderButNotType) {
+    const Square square({0, 0}, {1, 0}, {1, 1}, {0, 1});
+    const Square reordered({1, 1}, {0, 1}, {0, 0}, {1, 0});
+    const Square other({0, 0}, {2, 0}, {2, 2}, {0, 2});
+    const Rectangle sameVertices({0, 0}, {1, 0}, {1, 1}, {0, 1});
+    EXPECT_TRUE(square == reordered);
+    EXPECT_FALSE(square == other);
+    EXPECT_FALSE(square == sameVertices);
 }
 
-TEST(SquareTest, MoveAssignment) {
-    Square square1({0, 0}, {0, 1}, {1, 1}, {1, 0});
-    Square square2;
-    square2 = std::move(square1);
-
-    EXPECT_EQ(square2.getSize(), 4);
-
-    const Point* points = square2.getPoints();
-    Point point1{0, 0};
-    Point point2{0, 1};
-    Point point3{1, 1};
-    Point point4{1, 0};
-
-    EXPECT_TRUE(points[0] == point1);
-    EXPECT_TRUE(points[1] == point2);
-    EXPECT_TRUE(points[2] == point3);
-    EXPECT_TRUE(points[3] == point4);
+TEST(SquareTest, CloneIsEqualCopy) {
+    const Square square({0, 0}, {1, 0}, {1, 1}, {0, 1});
+    const auto clone = square.clone();
+    EXPECT_NE(dynamic_cast<Square*>(clone.get()), nullptr);
+    EXPECT_TRUE(*clone == square);
 }
 
-TEST(SquareTest, AreaCalculation) {
-    Square square({0, 0}, {0, 2}, {2, 2}, {2, 0});
-
-    EXPECT_DOUBLE_EQ(static_cast<double>(square), 4.0);
-}
-
-TEST(SquareTest, CenterCalculation) {
-    Square square({0, 0}, {0, 2}, {2, 2}, {2, 0});
-    Point center = square.getCenter();
-
-    EXPECT_DOUBLE_EQ(center.x, 1.0);
-    EXPECT_DOUBLE_EQ(center.y, 1.0);
-}
-
-TEST(SquareTest, InputOutput) {
-    std::istringstream input("0 0 0 1 1 1 1 0");
-    Square square;
-
-    square.read(input);
-    std::ostringstream output;
-    square.print(output);
-
-    EXPECT_EQ(output.str(), "(0,0) (0,1) (1,1) (1,0) ");
-}
-
-TEST(SquareTest, EqualityOperator) {
-    Square square1({0, 0}, {0, 1}, {1, 1}, {1, 0});
-    Square square2({0, 0}, {0, 1}, {1, 1}, {1, 0});
-    Square square3({0, 0}, {0, 2}, {2, 2}, {2, 0});
-
-    EXPECT_TRUE(square1 == square2);
-    EXPECT_FALSE(square1 == square3);
-}
-
-TEST(SquareTest, Clone) {
-    Square square1({0, 0}, {0, 1}, {1, 1}, {1, 0});
-    auto square2 = square1.clone();
-
-    EXPECT_TRUE(square1 == *square2);
+TEST(SquareTest, MovedFromSquareStaysUsable) {
+    Square source({0, 0}, {3, 0}, {3, 3}, {0, 3});
+    Square target;
+    target = std::move(source);
+    EXPECT_DOUBLE_EQ(static_cast<double>(target), 9);
+    EXPECT_EQ(source.getSize(), 4U);
+    EXPECT_TRUE(std::isfinite(static_cast<double>(source)));
+    EXPECT_TRUE(std::isfinite(source.getCenter().x));
+    std::ostringstream out;
+    out << source;
+    EXPECT_FALSE(out.str().empty());
 }

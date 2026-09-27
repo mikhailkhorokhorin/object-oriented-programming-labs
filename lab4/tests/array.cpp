@@ -2,137 +2,137 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <sstream>
+#include <utility>
+
 #include "hexagon.hpp"
 #include "pentagon.hpp"
 #include "rhombus.hpp"
 
-template <Scalar T>
-shared_ptr<Rhombus<T>> makeRhombus() {
-    return make_shared<Rhombus<T>>(Point<T>(0, 0), Point<T>(2, 0), Point<T>(2, 2), Point<T>(0, 2));
+namespace {
+
+std::shared_ptr<Rhombus<int>> makeRhombus() {
+    return std::make_shared<Rhombus<int>>(Point<int>{0, 0}, Point<int>{2, 1}, Point<int>{0, 2},
+                                          Point<int>{-2, 1});
 }
 
-template <Scalar T>
-shared_ptr<Pentagon<T>> makePentagon() {
-    return make_shared<Pentagon<T>>(Point<T>(0, 0), Point<T>(1, 2), Point<T>(2, 3), Point<T>(3, 2),
-                                    Point<T>(2, 0));
+std::shared_ptr<Pentagon<int>> makePentagon() {
+    return std::make_shared<Pentagon<int>>(Point<int>{0, 0}, Point<int>{2, 0}, Point<int>{3, 2},
+                                           Point<int>{1, 4}, Point<int>{-1, 2});
 }
 
-template <Scalar T>
-shared_ptr<Hexagon<T>> makeHexagon() {
-    return make_shared<Hexagon<T>>(Point<T>(0, 0), Point<T>(1, 0), Point<T>(2, 1), Point<T>(2, 2),
-                                   Point<T>(1, 3), Point<T>(0, 2));
+std::shared_ptr<Hexagon<int>> makeHexagon() {
+    return std::make_shared<Hexagon<int>>(Point<int>{0, 0}, Point<int>{2, 0}, Point<int>{3, 1},
+                                          Point<int>{2, 2}, Point<int>{0, 2}, Point<int>{-1, 1});
 }
 
-TEST(ArrayTest, AddAndGetFigures) {
+Array<int> makeArray() {
     Array<int> array;
-    auto rhombus = makeRhombus<int>();
-    auto pentagon = makePentagon<int>();
-    auto hexagon = makeHexagon<int>();
+    array.addFigure(makeRhombus());
+    array.addFigure(makePentagon());
+    array.addFigure(makeHexagon());
+    return array;
+}
 
+}
+
+TEST(ArrayTest, AddAndGet) {
+    Array<int> array;
+    const auto rhombus = makeRhombus();
     array.addFigure(rhombus);
-    array.addFigure(pentagon);
-    array.addFigure(hexagon);
-
-    EXPECT_EQ(array.getSize(), 3);
+    array.addFigure(nullptr);
+    EXPECT_EQ(array.getSize(), 1U);
     EXPECT_EQ(array.getFigure(0), rhombus);
-    EXPECT_EQ(array.getFigure(1), pentagon);
-    EXPECT_EQ(array.getFigure(2), hexagon);
-
     EXPECT_EQ(array[0], rhombus);
-    EXPECT_EQ(array[1], pentagon);
-    EXPECT_EQ(array[2], hexagon);
+    EXPECT_EQ(array[1], nullptr);
+    EXPECT_EQ(array.getFigure(10), nullptr);
 }
 
 TEST(ArrayTest, TotalArea) {
-    Array<int> array;
-    auto rhombus = makeRhombus<int>();
-    auto pentagon = makePentagon<int>();
-    auto hexagon = makeHexagon<int>();
-
-    array.addFigure(rhombus);
-    array.addFigure(pentagon);
-    array.addFigure(hexagon);
-
-    double expected_area = static_cast<double>(*rhombus) + static_cast<double>(*pentagon) +
-                           static_cast<double>(*hexagon);
-    EXPECT_DOUBLE_EQ(array.getAllArea(), expected_area);
+    EXPECT_DOUBLE_EQ(makeArray().getAllArea(), 4.0 + 10.0 + 6.0);
 }
 
-TEST(ArrayTest, RemoveFigure) {
-    Array<int> array;
-    auto rhombus = makeRhombus<int>();
-    auto pentagon = makePentagon<int>();
-    auto hexagon = makeHexagon<int>();
-
-    array.addFigure(rhombus);
-    array.addFigure(pentagon);
-    array.addFigure(hexagon);
-
-    array.removeFigure(1);
-    EXPECT_EQ(array.getSize(), 2);
-    EXPECT_EQ(array.getFigure(0), rhombus);
-    EXPECT_EQ(array.getFigure(1), hexagon);
-
-    array.removeFigure(0);
-    EXPECT_EQ(array.getSize(), 1);
-    EXPECT_EQ(array.getFigure(0), hexagon);
-
-    array.removeFigure(0);
-    EXPECT_EQ(array.getSize(), 0);
-
-    array.removeFigure(0);
-    EXPECT_EQ(array.getSize(), 0);
+TEST(ArrayTest, ZeroCapacityGrowsOnAdd) {
+    Array<int> array(0);
+    array.addFigure(makeRhombus());
+    array.addFigure(makeHexagon());
+    EXPECT_EQ(array.getSize(), 2U);
+    EXPECT_GE(array.getCapacity(), 2U);
 }
 
-TEST(ArrayTest, CopyArray) {
-    Array<int> array1;
-    auto rhombus = makeRhombus<int>();
-    array1.addFigure(rhombus);
-
-    Array<int> array2 = array1;
-    EXPECT_EQ(array2.getSize(), array1.getSize());
-    EXPECT_NE(array2.getFigure(0), array1.getFigure(0));
-    EXPECT_EQ(static_cast<double>(*array2.getFigure(0)), static_cast<double>(*array1.getFigure(0)));
-}
-
-TEST(ArrayTest, MoveArray) {
-    Array<int> array1;
-    auto rhombus = makeRhombus<int>();
-    array1.addFigure(rhombus);
-
-    Array<int> array2 = std::move(array1);
-    EXPECT_EQ(array2.getSize(), 1);
-    EXPECT_EQ(array1.getSize(), 0);
-}
-
-TEST(ArrayTest, ResizeArray) {
+TEST(ArrayTest, GrowsByDoubling) {
     Array<int> array(2);
-    auto rhombus = makeRhombus<int>();
-    auto pentagon = makePentagon<int>();
-    auto hexagon = makeHexagon<int>();
-
-    array.addFigure(rhombus);
-    array.addFigure(pentagon);
-    EXPECT_EQ(array.getCapacity(), 2);
-
-    array.addFigure(hexagon);
-    EXPECT_GE(array.getCapacity(), 3);
-    EXPECT_EQ(array.getSize(), 3);
+    array.addFigure(makeRhombus());
+    array.addFigure(makeRhombus());
+    EXPECT_EQ(array.getCapacity(), 2U);
+    array.addFigure(makeRhombus());
+    EXPECT_EQ(array.getCapacity(), 4U);
 }
 
-TEST(ArrayTest, IndexOutOfBounds) {
+TEST(ArrayTest, RemoveShiftsFigures) {
     Array<int> array;
-    auto rhombus = makeRhombus<int>();
+    const auto rhombus = makeRhombus();
+    const auto pentagon = makePentagon();
+    const auto hexagon = makeHexagon();
     array.addFigure(rhombus);
+    array.addFigure(pentagon);
+    array.addFigure(hexagon);
+    array.removeFigure(1);
+    EXPECT_EQ(array.getSize(), 2U);
+    EXPECT_EQ(array[0], rhombus);
+    EXPECT_EQ(array[1], hexagon);
+    array.removeFigure(7);
+    EXPECT_EQ(array.getSize(), 2U);
+}
 
-    EXPECT_EQ(array.getFigure(10), nullptr);
-    EXPECT_EQ(array[10], nullptr);
+TEST(ArrayTest, RemoveReleasesOwnership) {
+    Array<int> array;
+    const auto rhombus = makeRhombus();
+    const auto hexagon = makeHexagon();
+    array.addFigure(rhombus);
+    array.addFigure(hexagon);
+    EXPECT_EQ(hexagon.use_count(), 2);
+    array.removeFigure(0);
+    EXPECT_EQ(rhombus.use_count(), 1);
+    EXPECT_EQ(hexagon.use_count(), 2);
+    array.removeFigure(0);
+    EXPECT_EQ(hexagon.use_count(), 1);
+    EXPECT_EQ(array.getSize(), 0U);
+}
+
+TEST(ArrayTest, CopyIsDeep) {
+    const Array<int> original = makeArray();
+    Array<int> copy(original);
+    EXPECT_EQ(copy.getSize(), 3U);
+    EXPECT_NE(copy[0], original[0]);
+    EXPECT_TRUE(*copy[0] == *original[0]);
+    copy.removeFigure(0);
+    EXPECT_EQ(original.getSize(), 3U);
+
+    Array<int> assigned;
+    assigned = original;
+    EXPECT_DOUBLE_EQ(assigned.getAllArea(), original.getAllArea());
+    EXPECT_NE(assigned[2], original[2]);
+}
+
+TEST(ArrayTest, MoveTransfersFigures) {
+    Array<int> source = makeArray();
+    const auto first = source[0];
+    Array<int> moved(std::move(source));
+    EXPECT_EQ(moved.getSize(), 3U);
+    EXPECT_EQ(moved[0], first);
+
+    Array<int> assigned;
+    assigned = std::move(moved);
+    EXPECT_EQ(assigned.getSize(), 3U);
+    EXPECT_EQ(assigned[0], first);
 }
 
 TEST(ArrayTest, PrintFigures) {
     Array<int> array;
-    auto rhombus = makeRhombus<int>();
-    array.addFigure(rhombus);
-
-    EXPECT_NO_THROW(array.printFigures());
+    array.addFigure(makeRhombus());
+    std::ostringstream out;
+    array.printFigures(out);
+    EXPECT_EQ(out.str(), "Figure 1: (0, 0) (2, 1) (0, 2) (-2, 1) Center: (0, 1) Area: 4\n");
 }

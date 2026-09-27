@@ -1,5 +1,8 @@
 #include "observer_console.hpp"
 
+ConsoleLogger::ConsoleLogger(SyncedStream& output) : output_(&output) {
+}
+
 void ConsoleLogger::onEvent(const std::string& message) {
-    ThreadSafeCout() << message;
+    output_->writeLine(message);
 }

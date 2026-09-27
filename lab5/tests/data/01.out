@@ -1,0 +1,6 @@
+1 4 9 16 25
+size 5, capacity 8
+1 Alice 2.5
+2 Bob 4.75
+blocks in use: 2, free: 4
+after scope: in use 0, free 6

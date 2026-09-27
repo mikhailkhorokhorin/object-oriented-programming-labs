@@ -1,8 +1,14 @@
 #include "random.hpp"
 
-static thread_local std::mt19937 rng(std::random_device{}());
-static thread_local std::uniform_int_distribution<int> dist6(1, 6);
+#include <random>
 
-int roll_d6() {
-    return dist6(rng);
+namespace {
+
+thread_local std::mt19937 engine{std::random_device{}()};
+
+}
+
+int rollD6() {
+    std::uniform_int_distribution<int> distribution(1, 6);
+    return distribution(engine);
 }

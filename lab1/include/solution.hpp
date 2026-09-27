@@ -1,8 +1,7 @@
 #pragma once
 
 #include <string>
-
-#include <iostream>
+#include <string_view>
 
 bool isNotVowel(char c);
-std::string removeVowels(std::string s);
+std::string removeVowels(std::string_view text);

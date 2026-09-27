@@ -1,66 +1,117 @@
 #include "dungeon.hpp"
 
-Dungeon::Dungeon(double battleRange) : battleVisitor(battleRange) {
+#include <fstream>
+#include <stdexcept>
+#include <utility>
+
+#include "battle_visitor.hpp"
+#include "npc_factory.hpp"
+
+bool Dungeon::addNPC(const std::string& type, const std::string& name, int x, int y) {
+    return addNPC(NPCFactory::create(type, name, x, y));
 }
 
-void Dungeon::addNPC(const std::string& type, const std::string& name, int x, int y) {
-    auto npc = NPCFactory::create(type, name, x, y);
-    if (npc)
-        npcs.push_back(npc);
-    else
-        std::cerr << "Unknown NPC type: " << type << std::endl;
+bool Dungeon::addNPC(std::shared_ptr<NPC> npc) {
+    if (!npc) {
+        return false;
+    }
+    if (!isOnMap(npc->getPosition())) {
+        return false;
+    }
+    npcs_.push_back(std::move(npc));
+    return true;
+}
+
+bool Dungeon::isOnMap(const Point& position) {
+    return position.getX() >= 0 && position.getX() <= MAP_SIZE && position.getY() >= 0 &&
+           position.getY() <= MAP_SIZE;
 }
 
 void Dungeon::addObserver(IObserver* observer) {
-    battleVisitor.addObserver(observer);
-}
-
-void Dungeon::printAll() const {
-    for (const auto& npc : npcs) {
-        std::cout << npc->getType() << " " << npc->getName() << " (" << npc->getPosition().getX()
-                  << ", " << npc->getPosition().getY() << ")" << std::endl;
+    if (observer != nullptr) {
+        observers_.push_back(observer);
     }
 }
 
-void Dungeon::battle() {
-    std::vector<std::shared_ptr<NPC>> alive = npcs;
+void Dungeon::notify(const std::string& message) const {
+    for (IObserver* observer : observers_) {
+        observer->onEvent(message);
+    }
+}
 
-    for (size_t i = 0; i < alive.size(); ++i) {
-        for (size_t j = i + 1; j < alive.size(); ++j) {
-            if (!alive[i] || !alive[j])
+void Dungeon::printAll(std::ostream& os) const {
+    for (const auto& npc : npcs_) {
+        os << npc->getType() << " " << npc->getName() << " (" << npc->getPosition().getX() << ", "
+           << npc->getPosition().getY() << ")\n";
+    }
+}
+
+std::size_t Dungeon::battle(double range) {
+    std::vector<bool> dead(npcs_.size(), false);
+    for (std::size_t i = 0; i < npcs_.size(); ++i) {
+        for (std::size_t j = i + 1; j < npcs_.size(); ++j) {
+            if (dead[i] || dead[j] || npcs_[i]->distanceTo(*npcs_[j]) > range) {
                 continue;
-            alive[i]->accept(battleVisitor, *alive[j]);
+            }
+            NPC& first = *npcs_[i];
+            NPC& second = *npcs_[j];
+            const bool firstWins = kills(first, second);
+            const bool secondWins = kills(second, first);
+            if (firstWins) {
+                dead[j] = true;
+                notify(first.getName() + " killed " + second.getName());
+            }
+            if (secondWins) {
+                dead[i] = true;
+                notify(second.getName() + " killed " + first.getName());
+            }
         }
     }
-
-    alive.erase(std::remove_if(alive.begin(), alive.end(),
-                               [](const std::shared_ptr<NPC>& npc) { return !npc; }),
-                alive.end());
-
-    npcs = alive;
+    std::vector<std::shared_ptr<NPC>> survivors;
+    for (std::size_t i = 0; i < npcs_.size(); ++i) {
+        if (!dead[i]) {
+            survivors.push_back(npcs_[i]);
+        }
+    }
+    const std::size_t killed = npcs_.size() - survivors.size();
+    npcs_ = std::move(survivors);
+    return killed;
 }
 
-void Dungeon::saveToFile(const std::string& filename) const {
-    std::ofstream file(filename);
-    if (!file.is_open())
-        return;
+const std::vector<std::shared_ptr<NPC>>& Dungeon::getNPCs() const {
+    return npcs_;
+}
 
-    for (const auto& npc : npcs) {
+void Dungeon::saveToFile(const std::filesystem::path& path) const {
+    std::ofstream file(path);
+    if (!file) {
+        throw std::runtime_error("cannot write " + path.string());
+    }
+    for (const auto& npc : npcs_) {
         file << npc->getType() << " " << npc->getName() << " " << npc->getPosition().getX() << " "
-             << npc->getPosition().getY() << std::endl;
+             << npc->getPosition().getY() << '\n';
     }
 }
 
-void Dungeon::loadFromFile(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open())
-        return;
-
-    npcs.clear();
+void Dungeon::loadFromFile(const std::filesystem::path& path) {
+    std::ifstream file(path);
+    if (!file) {
+        throw std::runtime_error("cannot read " + path.string());
+    }
+    std::vector<std::shared_ptr<NPC>> loaded;
     std::string line;
     while (std::getline(file, line)) {
+        if (line.empty()) {
+            continue;
+        }
         auto npc = NPCFactory::fromString(line);
-        if (npc)
-            npcs.push_back(npc);
+        if (!npc) {
+            throw std::runtime_error("invalid NPC line: " + line);
+        }
+        if (!isOnMap(npc->getPosition())) {
+            throw std::runtime_error("NPC outside the map: " + line);
+        }
+        loaded.push_back(std::move(npc));
     }
+    npcs_ = std::move(loaded);
 }

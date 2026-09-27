@@ -1,29 +1,29 @@
 #pragma once
 
+#include <cstddef>
 #include <iterator>
+#include <type_traits>
 
 template <typename T>
 class VectorIterator {
-   private:
-    T* ptr_;
-
-   public:
+public:
     using iterator_category = std::forward_iterator_tag;
-    using value_type = T;
+    using value_type = std::remove_cv_t<T>;
     using difference_type = std::ptrdiff_t;
     using pointer = T*;
     using reference = T&;
 
-    VectorIterator(T* p = nullptr) : ptr_(p) {
-    }
+    VectorIterator() = default;
 
-    reference operator*() const {
-        return *ptr_;
-    }
+    explicit VectorIterator(T* ptr) : ptr_(ptr) {}
 
-    pointer operator->() const {
-        return ptr_;
-    }
+    template <typename U>
+        requires std::is_convertible_v<U*, T*>
+    VectorIterator(const VectorIterator<U>& other) : ptr_(other.get()) {}
+
+    reference operator*() const { return *ptr_; }
+
+    pointer operator->() const { return ptr_; }
 
     VectorIterator& operator++() {
         ++ptr_;
@@ -31,16 +31,15 @@ class VectorIterator {
     }
 
     VectorIterator operator++(int) {
-        VectorIterator tmp = *this;
-        ++(*this);
-        return tmp;
+        VectorIterator previous = *this;
+        ++ptr_;
+        return previous;
     }
 
-    bool operator==(const VectorIterator& other) const {
-        return ptr_ == other.ptr_;
-    }
+    pointer get() const { return ptr_; }
 
-    bool operator!=(const VectorIterator& other) const {
-        return ptr_ != other.ptr_;
-    }
+    bool operator==(const VectorIterator& other) const = default;
+
+private:
+    T* ptr_ = nullptr;
 };

@@ -1,26 +1,25 @@
 #include "observer_file.hpp"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
-TEST(FileLoggerTest, OnEventWritesToFile) {
-    std::remove("log.txt");
+#include "test_support/process.hpp"
 
-    FileLogger fileLogger;
+TEST(FileLoggerTest, AppendsEventsToConfiguredFile) {
+    const test_support::TempDir dir;
+    const auto path = dir.path() / "battle.log";
+    FileLogger logger(path);
+    EXPECT_EQ(logger.getPath(), path);
+    logger.onEvent("Test event message 1");
+    logger.onEvent("Test event message 2");
+    EXPECT_EQ(test_support::readFile(path), "Test event message 1\nTest event message 2\n");
 
-    fileLogger.onEvent("Test event message 1");
-    fileLogger.onEvent("Test event message 2");
+    FileLogger reopened(path);
+    reopened.onEvent("Test event message 3");
+    EXPECT_EQ(test_support::readFile(path),
+              "Test event message 1\nTest event message 2\nTest event message 3\n");
+}
 
-    std::ifstream file("log.txt");
-    ASSERT_TRUE(file.is_open());
-
-    std::string line1;
-    std::getline(file, line1);
-    EXPECT_EQ(line1, "Test event message 1");
-
-    std::string line2;
-    std::getline(file, line2);
-    EXPECT_EQ(line2, "Test event message 2");
-
-    file.close();
-    std::remove("log.txt");
+TEST(FileLoggerTest, DefaultPathIsLogTxt) {
+    const FileLogger logger;
+    EXPECT_EQ(logger.getPath(), "log.txt");
 }

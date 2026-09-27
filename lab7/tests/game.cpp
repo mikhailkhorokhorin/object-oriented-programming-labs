@@ -2,50 +2,58 @@
 
 #include <gtest/gtest.h>
 
-#include "bear.hpp"
-#include "rogue.hpp"
-#include "werewolf.hpp"
+#include <chrono>
+#include <sstream>
+#include <string>
 
-TEST(GameTest, InitAddsCorrectNumberOfNPCs) {
-    Game game(100, 100);
-    game.init(10);
+#include "test_support/process.hpp"
 
-    auto& dungeon = game.getDungeon();
-    auto aliveNPCs = dungeon.getAliveNPCs();
+namespace {
 
-    EXPECT_EQ(aliveNPCs.size(), 10);
-}
-
-TEST(GameTest, NPCsAreAliveAfterInit) {
-    Game game(100, 100);
-    game.init(5);
-
-    auto& dungeon = game.getDungeon();
-    for (auto& npc : dungeon.getAliveNPCs()) {
-        EXPECT_TRUE(npc->isAlive());
+std::size_t countOccurrences(const std::string& text, const std::string& pattern) {
+    std::size_t count = 0;
+    for (auto pos = text.find(pattern); pos != std::string::npos;
+         pos = text.find(pattern, pos + 1)) {
+        ++count;
     }
+    return count;
 }
 
-TEST(GameTest, RunSimulationKeepsRunningAndProducesAliveNPCs) {
-    Game game(50, 50);
-    game.init(10);
-
-    game.run(1);
-
-    auto& dungeon = game.getDungeon();
-    auto aliveNPCs = dungeon.getAliveNPCs();
-
-    EXPECT_GE(aliveNPCs.size(), 0);
-    for (auto& npc : aliveNPCs)
-        EXPECT_TRUE(npc->isAlive());
 }
 
-TEST(GameTest, ObserversReceiveMessages) {
-    Game game(100, 100);
-    game.init(2);
+TEST(GameTest, DefaultsComeFromConfig) {
+    const GameConfig config;
+    EXPECT_EQ(config.mapWidth, 100);
+    EXPECT_EQ(config.mapHeight, 100);
+    EXPECT_EQ(config.npcCount, 50);
+    EXPECT_EQ(config.timing.duration, std::chrono::seconds(30));
+    EXPECT_EQ(config.timing.printInterval, std::chrono::seconds(1));
+}
 
-    auto& dungeon = game.getDungeon();
-    dungeon.notifyObservers("Test message");
+TEST(GameTest, RunPrintsMapsSurvivorsOnceAndLogsKills) {
+    const test_support::TempDir dir;
+    GameConfig config;
+    config.mapWidth = 3;
+    config.mapHeight = 3;
+    config.npcCount = 12;
+    config.timing = {std::chrono::milliseconds(250), std::chrono::milliseconds(5),
+                     std::chrono::milliseconds(100)};
+    config.logPath = dir.path() / "log.txt";
+    std::ostringstream out;
+    Game game(config, out, [roll = 0]() mutable { return roll++ % 2 == 0 ? 6 : 1; });
+    EXPECT_EQ(game.getConfig().npcCount, 12);
+    game.run();
 
-    SUCCEED();
+    const std::string output = out.str();
+    EXPECT_GE(countOccurrences(output, "=== Map ("), 2U);
+    EXPECT_EQ(countOccurrences(output, "=== Survivors ("), 1U);
+    EXPECT_EQ(game.getDungeon().getWidth(), 3);
+    const auto alive = game.getDungeon().getAliveNPCs().size();
+    EXPECT_LE(alive, 12U);
+    EXPECT_NE(output.find("=== Survivors (" + std::to_string(alive) + ") ==="), std::string::npos);
+    const std::size_t kills = countOccurrences(output, " killed ");
+    EXPECT_EQ(kills, 12U - alive);
+    if (kills > 0) {
+        EXPECT_EQ(countOccurrences(test_support::readFile(config.logPath), " killed "), kills);
+    }
 }

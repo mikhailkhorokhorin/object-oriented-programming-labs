@@ -3,9 +3,10 @@
 #include <iostream>
 
 struct Point {
-    double x{}, y{};
+    double x{};
+    double y{};
 
-    bool operator==(const Point& other) const;
+    bool operator==(const Point& other) const = default;
 };
 
 std::istream& operator>>(std::istream& is, Point& point);

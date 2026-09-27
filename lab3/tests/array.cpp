@@ -2,86 +2,116 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <sstream>
+#include <utility>
+
 #include "rectangle.hpp"
 #include "square.hpp"
 #include "trapezoid.hpp"
 
-TEST(ArrayTest, AddVariousFigures) {
+namespace {
+
+Array makeArray() {
     Array array;
-
-    Square* square = new Square({0, 0}, {0, 1}, {1, 1}, {1, 0});
-    Rectangle* rectangle = new Rectangle({0, 0}, {0, 2}, {3, 2}, {3, 0});
-    Trapezoid* trapezoid = new Trapezoid({0, 0}, {2, 0}, {3, 2}, {1, 2});
-
-    array.addFigure(square);
-    array.addFigure(rectangle);
-    array.addFigure(trapezoid);
-
-    EXPECT_EQ(array.getSize(), 3);
-    EXPECT_DOUBLE_EQ(array.getAllArea(), static_cast<double>(*square) +
-                                             static_cast<double>(*rectangle) +
-                                             static_cast<double>(*trapezoid));
-
-    EXPECT_TRUE(dynamic_cast<Square*>(array.getFigure(0)) != nullptr);
-    EXPECT_TRUE(dynamic_cast<Rectangle*>(array.getFigure(1)) != nullptr);
-    EXPECT_TRUE(dynamic_cast<Trapezoid*>(array.getFigure(2)) != nullptr);
+    array.addFigure(std::make_unique<Square>(Point{0, 0}, Point{0, 2}, Point{2, 2}, Point{2, 0}));
+    array.addFigure(
+        std::make_unique<Rectangle>(Point{0, 0}, Point{0, 3}, Point{3, 3}, Point{3, 0}));
+    array.addFigure(
+        std::make_unique<Trapezoid>(Point{0, 0}, Point{2, 0}, Point{3, 2}, Point{1, 2}));
+    return array;
 }
 
-TEST(ArrayTest, CopyAndMoveWithVariousFigures) {
-    Array array1;
-    array1.addFigure(new Square({0, 0}, {0, 1}, {1, 1}, {1, 0}));
-    array1.addFigure(new Rectangle({0, 0}, {0, 2}, {3, 2}, {3, 0}));
-    array1.addFigure(new Trapezoid({0, 0}, {2, 0}, {3, 2}, {1, 2}));
-
-    Array array2(array1);
-
-    EXPECT_EQ(array2.getSize(), 3);
-    EXPECT_DOUBLE_EQ(array2.getAllArea(), array1.getAllArea());
-
-    Array array3(std::move(array1));
-
-    EXPECT_EQ(array3.getSize(), 3);
-    EXPECT_EQ(array1.getSize(), 0);
-
-    Array array4;
-    array4 = array2;
-
-    EXPECT_EQ(array4.getSize(), 3);
-    EXPECT_DOUBLE_EQ(array4.getAllArea(), array2.getAllArea());
 }
 
-TEST(ArrayTest, RemoveFiguresPolymorphic) {
-    Array array;
-    array.addFigure(new Square({0, 0}, {0, 1}, {1, 1}, {1, 0}));
-    array.addFigure(new Rectangle({0, 0}, {0, 2}, {3, 2}, {3, 0}));
-    array.addFigure(new Trapezoid({0, 0}, {2, 0}, {3, 2}, {1, 2}));
+TEST(ArrayTest, StoresFiguresPolymorphically) {
+    const Array array = makeArray();
+    EXPECT_EQ(array.getSize(), 3U);
+    EXPECT_NE(dynamic_cast<Square*>(array.getFigure(0)), nullptr);
+    EXPECT_NE(dynamic_cast<Rectangle*>(array.getFigure(1)), nullptr);
+    EXPECT_NE(dynamic_cast<Trapezoid*>(array[2]), nullptr);
+    EXPECT_EQ(array[3], nullptr);
+    EXPECT_EQ(array.getFigure(3), nullptr);
+}
 
+TEST(ArrayTest, TotalArea) {
+    EXPECT_DOUBLE_EQ(makeArray().getAllArea(), 4 + 9 + 4);
+    EXPECT_DOUBLE_EQ(Array().getAllArea(), 0);
+}
+
+TEST(ArrayTest, IgnoresNullFigure) {
+    Array array;
+    array.addFigure(nullptr);
+    EXPECT_EQ(array.getSize(), 0U);
+}
+
+TEST(ArrayTest, ZeroCapacityGrowsOnAdd) {
+    Array array(0);
+    EXPECT_EQ(array.getCapacity(), 0U);
+    array.addFigure(std::make_unique<Square>());
+    array.addFigure(std::make_unique<Square>());
+    EXPECT_EQ(array.getSize(), 2U);
+    EXPECT_GE(array.getCapacity(), 2U);
+}
+
+TEST(ArrayTest, GrowsByDoubling) {
+    Array array(2);
+    array.addFigure(std::make_unique<Square>());
+    array.addFigure(std::make_unique<Square>());
+    EXPECT_EQ(array.getCapacity(), 2U);
+    array.addFigure(std::make_unique<Square>());
+    EXPECT_EQ(array.getCapacity(), 4U);
+    EXPECT_EQ(array.getSize(), 3U);
+}
+
+TEST(ArrayTest, RemoveShiftsFigures) {
+    Array array = makeArray();
     array.removeFigure(1);
-
-    EXPECT_EQ(array.getSize(), 2);
-    EXPECT_TRUE(dynamic_cast<Square*>(array.getFigure(0)) != nullptr);
-    EXPECT_TRUE(dynamic_cast<Trapezoid*>(array.getFigure(1)) != nullptr);
+    EXPECT_EQ(array.getSize(), 2U);
+    EXPECT_NE(dynamic_cast<Square*>(array[0]), nullptr);
+    EXPECT_NE(dynamic_cast<Trapezoid*>(array[1]), nullptr);
+    EXPECT_EQ(array[2], nullptr);
+    array.removeFigure(5);
+    EXPECT_EQ(array.getSize(), 2U);
+    array.removeFigure(0);
+    array.removeFigure(0);
+    EXPECT_EQ(array.getSize(), 0U);
 }
 
-TEST(ArrayTest, OperatorIndexPolymorphic) {
-    Array array;
-    array.addFigure(new Square({0, 0}, {0, 1}, {1, 1}, {1, 0}));
-    array.addFigure(new Rectangle({0, 0}, {0, 2}, {3, 2}, {3, 0}));
+TEST(ArrayTest, CopyIsDeep) {
+    const Array original = makeArray();
+    Array copy(original);
+    EXPECT_EQ(copy.getSize(), 3U);
+    EXPECT_NE(copy[0], original[0]);
+    EXPECT_TRUE(*copy[0] == *original[0]);
+    copy.removeFigure(0);
+    EXPECT_EQ(original.getSize(), 3U);
 
-    Figure* figure1 = array[0];
-    Figure* figure2 = array[1];
-    Figure* figure3 = array[2];
-
-    EXPECT_TRUE(dynamic_cast<Square*>(figure1) != nullptr);
-    EXPECT_TRUE(dynamic_cast<Rectangle*>(figure2) != nullptr);
-    EXPECT_EQ(figure3, nullptr);
+    Array assigned;
+    assigned = original;
+    EXPECT_DOUBLE_EQ(assigned.getAllArea(), original.getAllArea());
+    const Array& alias = assigned;
+    assigned = alias;
+    EXPECT_EQ(assigned.getSize(), 3U);
 }
 
-TEST(ArrayTest, GetAllAreaPolymorphic) {
-    Array array;
-    array.addFigure(new Square({0, 0}, {0, 2}, {2, 2}, {2, 0}));
-    array.addFigure(new Rectangle({0, 0}, {0, 3}, {3, 3}, {3, 0}));
-    array.addFigure(new Trapezoid({0, 0}, {2, 0}, {3, 2}, {1, 2}));
+TEST(ArrayTest, MoveTransfersFigures) {
+    Array source = makeArray();
+    Figure* first = source[0];
+    Array moved(std::move(source));
+    EXPECT_EQ(moved.getSize(), 3U);
+    EXPECT_EQ(moved[0], first);
 
-    EXPECT_DOUBLE_EQ(array.getAllArea(), 4 + 9 + 4);
+    Array assigned;
+    assigned = std::move(moved);
+    EXPECT_EQ(assigned.getSize(), 3U);
+    EXPECT_EQ(assigned[0], first);
+}
+
+TEST(ArrayTest, PrintFigures) {
+    Array array;
+    array.addFigure(std::make_unique<Square>(Point{0, 0}, Point{2, 0}, Point{2, 2}, Point{0, 2}));
+    std::ostringstream out;
+    array.printFigures(out);
+    EXPECT_EQ(out.str(), "Figure 1: (0, 0) (2, 0) (2, 2) (0, 2) Center: (1, 1) Area: 4\n");
 }

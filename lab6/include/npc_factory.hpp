@@ -1,13 +1,12 @@
 #pragma once
 
 #include <memory>
-#include <sstream>
 #include <string>
 
-class NPC;
+#include "npc.hpp"
 
 class NPCFactory {
-   public:
+public:
     static std::shared_ptr<NPC> create(const std::string& type, const std::string& name, int x,
                                        int y);
 

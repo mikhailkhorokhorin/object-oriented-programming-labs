@@ -1,40 +1,69 @@
 #include "task_queue.hpp"
 
-void TaskQueue::push(std::function<void()> task) {
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        tasks.push(std::move(task));
+#include <algorithm>
+#include <utility>
+
+TaskQueue::TaskQueue(std::size_t capacity) : capacity_(std::max<std::size_t>(1, capacity)) {
+}
+
+bool TaskQueue::push(Task task, const std::stop_token& stopToken) {
+    std::unique_lock lock(mutex_);
+    notFull_.wait(lock, stopToken, [this] { return closed_ || tasks_.size() < capacity_; });
+    if (closed_ || tasks_.size() >= capacity_) {
+        return false;
     }
-    cv.notify_one();
+    tasks_.push(std::move(task));
+    lock.unlock();
+    notEmpty_.notify_one();
+    return true;
 }
 
-std::function<void()> TaskQueue::pop() {
-    std::unique_lock<std::mutex> lock(mutex);
-    cv.wait(lock, [this] { return !tasks.empty(); });
-    auto task = std::move(tasks.front());
-    tasks.pop();
-    return task;
+bool TaskQueue::tryPush(Task task) {
+    std::unique_lock lock(mutex_);
+    if (closed_ || tasks_.size() >= capacity_) {
+        return false;
+    }
+    tasks_.push(std::move(task));
+    lock.unlock();
+    notEmpty_.notify_one();
+    return true;
 }
 
-std::optional<std::function<void()>> TaskQueue::tryPop() {
-    std::lock_guard<std::mutex> lock(mutex);
-    if (tasks.empty())
+std::optional<TaskQueue::Task> TaskQueue::pop(const std::stop_token& stopToken) {
+    std::unique_lock lock(mutex_);
+    notEmpty_.wait(lock, stopToken, [this] { return closed_ || !tasks_.empty(); });
+    return takeLocked();
+}
+
+std::optional<TaskQueue::Task> TaskQueue::tryPop() {
+    const std::lock_guard lock(mutex_);
+    return takeLocked();
+}
+
+std::optional<TaskQueue::Task> TaskQueue::takeLocked() {
+    if (tasks_.empty()) {
         return std::nullopt;
-    auto task = std::move(tasks.front());
-    tasks.pop();
+    }
+    Task task = std::move(tasks_.front());
+    tasks_.pop();
+    notFull_.notify_one();
     return task;
 }
 
-void TaskQueue::executeAll() {
-    std::queue<std::function<void()>> tmp;
+void TaskQueue::close() {
     {
-        std::lock_guard<std::mutex> lock(mutex);
-        std::swap(tmp, tasks);
+        const std::lock_guard lock(mutex_);
+        closed_ = true;
     }
+    notEmpty_.notify_all();
+    notFull_.notify_all();
+}
 
-    while (!tmp.empty()) {
-        auto task = std::move(tmp.front());
-        tmp.pop();
-        task();
-    }
+std::size_t TaskQueue::size() const {
+    const std::lock_guard lock(mutex_);
+    return tasks_.size();
+}
+
+std::size_t TaskQueue::capacity() const {
+    return capacity_;
 }

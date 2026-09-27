@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <sstream>
+
 TEST(PointTest, EqualityOperator) {
     Point point1{1.0, 2.0};
     Point point2{1.0, 2.0};

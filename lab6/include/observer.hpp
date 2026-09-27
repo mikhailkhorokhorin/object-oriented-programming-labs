@@ -3,7 +3,7 @@
 #include <string>
 
 class IObserver {
-   public:
+public:
     virtual ~IObserver() = default;
-    virtual void onEvent(const std::string& msg) = 0;
+    virtual void onEvent(const std::string& message) = 0;
 };

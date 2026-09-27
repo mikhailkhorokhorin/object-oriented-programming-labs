@@ -1,17 +1,16 @@
-include_directories(include)
+lab_library(lab5_core INTERFACE)
 
-add_executable(lab5_main
-    main.cpp
+lab_executable(lab5_main
+    SOURCES app/main.cpp
+    LINK lab5_core
 )
 
-add_executable(lab5_tests
-    tests/memory_resource.cpp
-    tests/unit.cpp
-    tests/vector_iterator.cpp
-    tests/vector.cpp
+lab_tests(lab5_tests
+    SOURCES
+        tests/e2e.cpp
+        tests/memory_resource.cpp
+        tests/vector.cpp
+        tests/vector_iterator.cpp
+    LINK lab5_core
+    BINARIES lab5_main
 )
-
-target_link_libraries(lab5_tests GTest::gtest_main)
-
-include(GoogleTest)
-gtest_discover_tests(lab5_tests)

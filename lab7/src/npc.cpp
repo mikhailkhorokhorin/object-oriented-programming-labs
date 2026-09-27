@@ -1,40 +1,39 @@
 #include "npc.hpp"
 
-NPC::NPC(std::string name, const Point& pos) : name(std::move(name)), position(pos) {
+#include <algorithm>
+#include <utility>
+
+NPC::NPC(std::string name, const Point& position) : name_(std::move(name)), position_(position) {
 }
 
 const std::string& NPC::getName() const {
-    return name;
+    return name_;
 }
 
 Point NPC::getPosition() const {
-    std::lock_guard<std::mutex> lock(mutex);
-    return position;
+    const std::lock_guard lock(mutex_);
+    return position_;
 }
 
 double NPC::distanceTo(const NPC& other) const {
-    Point otherPos = other.getPosition();
-    std::lock_guard<std::mutex> lock(mutex);
-    return position.distanceTo(otherPos);
+    return getPosition().distanceTo(other.getPosition());
 }
 
 bool NPC::isAlive() const {
-    std::lock_guard<std::mutex> lock(mutex);
-    return alive;
+    const std::lock_guard lock(mutex_);
+    return alive_;
 }
 
-void NPC::kill() {
-    std::lock_guard<std::mutex> lock(mutex);
-    alive = false;
+bool NPC::tryKill() {
+    const std::lock_guard lock(mutex_);
+    return std::exchange(alive_, false);
 }
 
-void NPC::move(int dx, int dy, int MAP_WIDTH, int MAP_HEIGHT) {
-    std::lock_guard<std::mutex> lock(mutex);
-    if (!alive)
+void NPC::move(int dx, int dy, int mapWidth, int mapHeight) {
+    const std::lock_guard lock(mutex_);
+    if (!alive_ || mapWidth <= 0 || mapHeight <= 0) {
         return;
-
-    int x = std::clamp(position.getX() + dx, 0, MAP_WIDTH);
-    int y = std::clamp(position.getY() + dy, 0, MAP_HEIGHT);
-
-    position = Point(x, y);
+    }
+    position_ = Point(std::clamp(position_.getX() + dx, 0, mapWidth - 1),
+                      std::clamp(position_.getY() + dy, 0, mapHeight - 1));
 }

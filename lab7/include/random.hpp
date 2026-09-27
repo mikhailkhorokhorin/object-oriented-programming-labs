@@ -1,5 +1,3 @@
 #pragma once
 
-#include <random>
-
-int roll_d6();
+int rollD6();

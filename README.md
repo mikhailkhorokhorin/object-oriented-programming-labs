@@ -1,15 +1,13 @@
-# Laboratory works on Object-Oriented Programming in C++
+# Object-Oriented Programming Labs
 
-### [№1. First Program in C++](lab1/README.md)
+C++20 labs on classes, inheritance, templates, allocators, design patterns and multithreading.
 
-### [№2. Studying Basic Techniques of Working with Classes](lab2/README.md)
-
-### [№3. Studying Basic OOP Techniques: Inheritance and Polymorphism](lab3/README.md)
-
-### [№4. Fundamentals of Metaprogramming](lab4/README.md)
-
-### [№5. Iterators and Allocators](lab5/README.md)
-
-### [№6. Design Patterns](lab6/README.md)
-
-### [№7. Asynchronous Programming](lab7/README.md)
+| No. | Topic |
+| --- | --- |
+| 1 | [First Program: Removing Vowels](lab1/) |
+| 2 | [Classes and Dynamic Memory: Money](lab2/) |
+| 3 | [Inheritance and Polymorphism: Quadrilaterals](lab3/) |
+| 4 | [Templates and Smart Pointers: Polygons](lab4/) |
+| 5 | [Iterators and Allocators: Vector on a Custom Memory Resource](lab5/) |
+| 6 | [Design Patterns: Dungeon Editor](lab6/) |
+| 7 | [Asynchronous Programming: Dungeon Simulation](lab7/) |

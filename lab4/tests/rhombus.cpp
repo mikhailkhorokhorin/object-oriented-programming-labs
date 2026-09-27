@@ -2,91 +2,98 @@
 
 #include <gtest/gtest.h>
 
-TEST(RhombusTest, DefaultConstructor) {
-    Rhombus<int> rhombus;
-    EXPECT_EQ(rhombus.getSize(), 0);
+#include <sstream>
+#include <utility>
+
+#include "pentagon.hpp"
+
+TEST(RhombusTest, DefaultHasFourVertices) {
+    const Rhombus<int> rhombus;
+    EXPECT_EQ(rhombus.getSize(), 4U);
+    EXPECT_DOUBLE_EQ(rhombus.getArea(), 0.0);
+    EXPECT_TRUE(rhombus == Rhombus<int>());
 }
 
-TEST(RhombusTest, ParameterConstructor) {
-    Point<int> point1{0, 0}, point2{2, 0}, point3{2, 2}, point4{0, 2};
-    Rhombus<int> rhombus(point1, point2, point3, point4);
-
-    EXPECT_EQ(rhombus.getSize(), 4);
-
+TEST(RhombusTest, StoresVerticesInOrder) {
+    const Rhombus<int> rhombus({0, 0}, {2, 1}, {0, 2}, {-2, 1});
     const Point<int>* points = rhombus.getPoints();
-    EXPECT_EQ(points[0], point1);
-    EXPECT_EQ(points[1], point2);
-    EXPECT_EQ(points[2], point3);
-    EXPECT_EQ(points[3], point4);
+    EXPECT_EQ(points[0], (Point<int>{0, 0}));
+    EXPECT_EQ(points[3], (Point<int>{-2, 1}));
 }
 
-TEST(RhombusTest, CopyConstructor) {
-    Point<int> point1{0, 0}, point2{2, 0}, point3{2, 2}, point4{0, 2};
-    Rhombus<int> rhombus1(point1, point2, point3, point4);
-    Rhombus<int> rhombus2(rhombus1);
-
-    EXPECT_EQ(rhombus1.getSize(), rhombus2.getSize());
-    EXPECT_TRUE(rhombus1 == rhombus2);
+TEST(RhombusTest, AreaFromDiagonals) {
+    const Rhombus<double> rhombus({0, 0}, {2, 1}, {0, 2}, {-2, 1});
+    EXPECT_DOUBLE_EQ(rhombus.getArea(), 4.0);
+    EXPECT_DOUBLE_EQ(static_cast<double>(rhombus), 4.0);
 }
 
-TEST(RhombusTest, GetCenter) {
-    Rhombus<double> rhombus(Point<double>(0, 0), Point<double>(2, 0), Point<double>(2, 2),
-                            Point<double>(0, 2));
-    Point<double> center = rhombus.getCenter();
-
-    EXPECT_DOUBLE_EQ(center.x, 1.0);
-    EXPECT_DOUBLE_EQ(center.y, 1.0);
+TEST(RhombusTest, IntegerAreaIsNotTruncated) {
+    const Rhombus<int> rhombus({0, 0}, {2, 1}, {3, 3}, {1, 2});
+    EXPECT_NEAR(rhombus.getArea(), 3.0, 1e-9);
 }
 
-TEST(RhombusTest, GetArea) {
-    Rhombus<double> rhombus(Point<double>(0, 0), Point<double>(2, 0), Point<double>(2, 2),
-                            Point<double>(0, 2));
-
-    double expected_area = 4.0;
-    double d1 = sqrt(pow(0 - 2, 2) + pow(0 - 2, 2));
-    double d2 = sqrt(pow(2 - 0, 2) + pow(0 - 2, 2));
-    expected_area = d1 * d2 / 2.0;
-
-    EXPECT_DOUBLE_EQ(rhombus.getArea(), expected_area);
+TEST(RhombusTest, CenterWithNegativeIntegerCoordinates) {
+    const Rhombus<int> rhombus({-4, 0}, {-2, 1}, {-4, 2}, {-6, 1});
+    EXPECT_EQ(rhombus.getCenter(), (Point<double>{-4, 1}));
 }
 
-TEST(RhombusTest, Print) {
-    Rhombus<int> rhombus(Point<int>(0, 0), Point<int>(2, 0), Point<int>(2, 2), Point<int>(0, 2));
-    ostringstream os;
-
-    rhombus.print(os);
-    string output = os.str();
-
-    EXPECT_NE(output.find("Area"), string::npos);
-    EXPECT_NE(output.find("(0,0)"), string::npos);
-}
-
-TEST(RhombusTest, Read) {
+TEST(RhombusTest, PrintAndRead) {
     Rhombus<int> rhombus;
-
-    istringstream is("0 0 2 0 2 2 0 2");
-    rhombus.read(is);
-
-    Point<int> point1{0, 0}, point2{2, 0}, point3{2, 2}, point4{0, 2};
-    const Point<int>* points = rhombus.getPoints();
-    EXPECT_EQ(points[0], point1);
-    EXPECT_EQ(points[1], point2);
-    EXPECT_EQ(points[2], point3);
-    EXPECT_EQ(points[3], point4);
+    std::istringstream in("0 0 2 1 0 2 -2 1");
+    in >> rhombus;
+    std::ostringstream out;
+    out << rhombus;
+    EXPECT_EQ(out.str(), "(0, 0) (2, 1) (0, 2) (-2, 1)");
 }
 
-TEST(RhombusTest, OperatorEquals) {
-    Rhombus<int> rhombus1(Point<int>(0, 0), Point<int>(2, 0), Point<int>(2, 2), Point<int>(0, 2));
-    Rhombus<int> rhombus2(rhombus1);
-    Rhombus<int> rhombus3(Point<int>(1, 1), Point<int>(3, 1), Point<int>(3, 3), Point<int>(1, 3));
+TEST(RhombusTest, FailedReadKeepsVertices) {
+    Rhombus<int> rhombus({0, 0}, {2, 1}, {0, 2}, {-2, 1});
+    std::istringstream in("1 1 2");
+    rhombus.read(in);
+    EXPECT_EQ(rhombus.getPoints()[0], (Point<int>{0, 0}));
+}
 
-    EXPECT_TRUE(rhombus1 == rhombus2);
-    EXPECT_FALSE(rhombus1 == rhombus3);
+TEST(RhombusTest, EqualityChecksTypeSizeAndVertices) {
+    const Rhombus<int> rhombus({0, 0}, {2, 1}, {0, 2}, {-2, 1});
+    const Rhombus<int> shifted({1, 0}, {3, 1}, {1, 2}, {-1, 1});
+    const Pentagon<int> pentagon;
+    EXPECT_TRUE(rhombus == Rhombus<int>(rhombus));
+    EXPECT_FALSE(rhombus == shifted);
+    EXPECT_FALSE(rhombus == pentagon);
+    EXPECT_FALSE(pentagon == rhombus);
+}
+
+TEST(RhombusTest, EqualityWithMovedFromRhombus) {
+    Rhombus<int> source({0, 0}, {2, 1}, {0, 2}, {-2, 1});
+    const Rhombus<int> moved(std::move(source));
+    EXPECT_FALSE(source == moved);
+    EXPECT_FALSE(moved == source);
+}
+
+TEST(RhombusTest, CopyAndMove) {
+    Rhombus<int> source({0, 0}, {2, 1}, {0, 2}, {-2, 1});
+    Rhombus<int> copy;
+    copy = source;
+    EXPECT_TRUE(copy == source);
+    EXPECT_NE(copy.getPoints(), source.getPoints());
+    Rhombus<int>& alias = copy;
+    copy = alias;
+    EXPECT_TRUE(copy == source);
+
+    Rhombus<int> moved(std::move(source));
+    EXPECT_TRUE(moved == copy);
+    EXPECT_EQ(source.getSize(), 0U);
+    EXPECT_DOUBLE_EQ(source.getArea(), 0.0);
+    EXPECT_EQ(source.getCenter(), (Point<double>{}));
+
+    Rhombus<int> assigned;
+    assigned = std::move(moved);
+    EXPECT_TRUE(assigned == copy);
 }
 
 TEST(RhombusTest, Clone) {
-    Rhombus<int> rhombus1(Point<int>(0, 0), Point<int>(2, 0), Point<int>(2, 2), Point<int>(0, 2));
-    auto rhombus2 = rhombus1.clone();
-    EXPECT_TRUE(dynamic_cast<Rhombus<int>*>(rhombus2.get()) != nullptr);
-    EXPECT_TRUE(rhombus1 == *rhombus2);
+    const Rhombus<int> rhombus({0, 0}, {2, 1}, {0, 2}, {-2, 1});
+    const auto clone = rhombus.clone();
+    EXPECT_NE(dynamic_cast<Rhombus<int>*>(clone.get()), nullptr);
+    EXPECT_TRUE(*clone == rhombus);
 }

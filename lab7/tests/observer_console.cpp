@@ -2,18 +2,42 @@
 
 #include <gtest/gtest.h>
 
-TEST(ConsoleLoggerTest, OnEventOutputsMessage) {
-    ConsoleLogger logger;
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
 
-    std::stringstream buffer;
-    std::streambuf* oldCout = std::cout.rdbuf(buffer.rdbuf());
+#include "synced_stream.hpp"
 
-    std::string message = "Hello, World!";
-    logger.onEvent(message);
+TEST(ConsoleLoggerTest, WritesLinePerEvent) {
+    std::ostringstream out;
+    SyncedStream stream(out);
+    ConsoleLogger logger(stream);
+    logger.onEvent("first");
+    logger.onEvent("second");
+    EXPECT_EQ(out.str(), "first\nsecond\n");
+}
 
-    std::cout.rdbuf(oldCout);
-
-    std::string output = buffer.str();
-
-    EXPECT_NE(output.find(message), std::string::npos);
+TEST(SyncedStreamTest, ConcurrentLinesAreNotInterleaved) {
+    std::ostringstream out;
+    SyncedStream stream(out);
+    const std::string line(64, 'x');
+    {
+        std::vector<std::jthread> threads;
+        for (int t = 0; t < 4; ++t) {
+            threads.emplace_back([&stream, &line] {
+                for (int i = 0; i < 100; ++i) {
+                    stream.writeLine(line);
+                }
+            });
+        }
+    }
+    std::istringstream in(out.str());
+    std::string read;
+    int lines = 0;
+    while (std::getline(in, read)) {
+        EXPECT_EQ(read, line);
+        ++lines;
+    }
+    EXPECT_EQ(lines, 400);
 }

@@ -1,13 +1,16 @@
 #pragma once
 
 #include <iostream>
-#include <ostream>
-#include <sstream>
 #include <string>
 
 #include "observer.hpp"
 
-class ConsoleLogger : public IObserver {
-   public:
-    void onEvent(const std::string& msg) override;
+class ConsoleLogger final : public IObserver {
+public:
+    explicit ConsoleLogger(std::ostream& os = std::cout);
+
+    void onEvent(const std::string& message) override;
+
+private:
+    std::ostream* os_;
 };

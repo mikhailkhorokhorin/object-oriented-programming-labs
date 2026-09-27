@@ -1,5 +1,8 @@
 #include "observer_console.hpp"
 
-void ConsoleLogger::onEvent(const std::string& msg) {
-    std::cout << msg << std::endl;
+ConsoleLogger::ConsoleLogger(std::ostream& os) : os_(&os) {
+}
+
+void ConsoleLogger::onEvent(const std::string& message) {
+    *os_ << message << '\n';
 }

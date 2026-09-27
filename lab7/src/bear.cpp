@@ -1,6 +1,6 @@
 #include "bear.hpp"
 
-Bear::Bear(const std::string& name, const Point& pos) : NPC(name, pos) {
+Bear::Bear(const std::string& name, const Point& position) : NPC(name, position) {
 }
 
 std::string Bear::getType() const {
@@ -8,11 +8,11 @@ std::string Bear::getType() const {
 }
 
 int Bear::getMoveDistance() const {
-    return 5;
+    return MOVE_DISTANCE;
 }
 
 int Bear::getKillDistance() const {
-    return 10;
+    return KILL_DISTANCE;
 }
 
 bool Bear::kills(const NPC& other) const {

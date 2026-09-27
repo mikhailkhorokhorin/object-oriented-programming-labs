@@ -45,11 +45,21 @@ TEST(RemoveVowelsTest, NoVowels) {
 
 TEST(RemoveVowelsTest, MixedString) {
     EXPECT_EQ(removeVowels("Hello World"), "Hll Wrld");
-    EXPECT_EQ(removeVowels("Moscow Aviation Insitute"), "Mscw vtn nstt");
+    EXPECT_EQ(removeVowels("Moscow Aviation Institute"), "Mscw vtn nsttt");
     EXPECT_EQ(removeVowels("This website is for LOL!"), "Ths wbst s fr LL!");
 }
 
 TEST(RemoveVowelsTest, NonAlphabeticCharacters) {
     EXPECT_EQ(removeVowels("123!@#"), "123!@#");
     EXPECT_EQ(removeVowels("a1e2i3o4u5"), "12345");
+}
+
+TEST(IsNotVowelTest, BytesOutsideAsciiAreKept) {
+    for (int value = -128; value < 0; ++value) {
+        EXPECT_TRUE(isNotVowel(static_cast<char>(value))) << value;
+    }
+}
+
+TEST(RemoveVowelsTest, KeepsUtf8Bytes) {
+    EXPECT_EQ(removeVowels("caf\xC3\xA9 \xD0\x96"), "cf\xC3\xA9 \xD0\x96");
 }

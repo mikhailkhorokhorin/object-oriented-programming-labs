@@ -1,84 +1,54 @@
 #include "battle_visitor.hpp"
 
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "bear.hpp"
-#include "gtest/gtest.h"
-#include "observer.hpp"
-#include "point.hpp"
 #include "rogue.hpp"
 #include "werewolf.hpp"
 
-class DummyObserver : public IObserver {
-   public:
-    std::vector<std::string> messages;
+namespace {
 
-    void onEvent(const std::string& msg) override {
-        messages.push_back(msg);
+std::vector<std::unique_ptr<NPC>> makeAll() {
+    std::vector<std::unique_ptr<NPC>> npcs;
+    npcs.push_back(std::make_unique<Bear>("Bear", Point()));
+    npcs.push_back(std::make_unique<Rogue>("Rogue", Point()));
+    npcs.push_back(std::make_unique<Werewolf>("Werewolf", Point()));
+    return npcs;
+}
+
+}
+
+TEST(BattleVisitorTest, KillMatrix) {
+    const auto npcs = makeAll();
+    const std::vector<std::pair<std::string, std::string>> expected = {
+        {"Bear", "Werewolf"}, {"Werewolf", "Rogue"}, {"Rogue", "Bear"}};
+    for (const auto& attacker : npcs) {
+        for (const auto& defender : npcs) {
+            const bool shouldKill =
+                std::find(expected.begin(), expected.end(),
+                          std::make_pair(attacker->getType(), defender->getType())) !=
+                expected.end();
+            EXPECT_EQ(kills(*attacker, *defender), shouldKill)
+                << attacker->getType() << " vs " << defender->getType();
+        }
     }
-};
-
-TEST(BattleVisitorTest, BearKillsWerewolf) {
-    Point pointBear(0, 0);
-    Point pointWerewolf(10, 10);
-
-    Bear bear("Baloo", pointBear);
-    Werewolf werewolf("Lupin", pointWerewolf);
-
-    DummyObserver observer;
-    BattleVisitor visitor(50.0);
-    visitor.addObserver(&observer);
-
-    bear.accept(visitor, werewolf);
-
-    ASSERT_EQ(observer.messages.size(), 1);
-    EXPECT_EQ(observer.messages[0], "Baloo killed Lupin");
 }
 
-TEST(BattleVisitorTest, RogueKillsBear) {
-    Point pointRogue(0, 0);
-    Point pointBear(10, 10);
+TEST(BattleVisitorTest, RecordsResultForDefender) {
+    Bear bear("Baloo", Point());
+    Werewolf werewolf("Lupin", Point());
+    BattleVisitor visitor(werewolf);
+    EXPECT_FALSE(visitor.defenderKilled());
+    bear.accept(visitor);
+    EXPECT_TRUE(visitor.defenderKilled());
 
-    Rogue rogue("Robin", pointRogue);
-    Bear bear("Baloo", pointBear);
-
-    DummyObserver observer;
-    BattleVisitor visitor(50.0);
-    visitor.addObserver(&observer);
-
-    rogue.accept(visitor, bear);
-
-    ASSERT_EQ(observer.messages.size(), 1);
-    EXPECT_EQ(observer.messages[0], "Robin killed Baloo");
-}
-
-TEST(BattleVisitorTest, WerewolfKillsRogue) {
-    Point pointWerewolf(0, 0);
-    Point pointRogue(10, 10);
-
-    Werewolf werewolf("Lupin", pointWerewolf);
-    Rogue rogue("Robin", pointRogue);
-
-    DummyObserver observer;
-    BattleVisitor visitor(50.0);
-    visitor.addObserver(&observer);
-
-    werewolf.accept(visitor, rogue);
-
-    ASSERT_EQ(observer.messages.size(), 1);
-    EXPECT_EQ(observer.messages[0], "Lupin killed Robin");
-}
-
-TEST(BattleVisitorTest, NoKillOutOfRange) {
-    Point pointBear(0, 0);
-    Point pointRogue(100, 100);
-
-    Bear bear("Baloo", pointBear);
-    Rogue rogue("Robin", pointRogue);
-
-    DummyObserver observer;
-    BattleVisitor visitor(50.0);
-    visitor.addObserver(&observer);
-
-    bear.accept(visitor, rogue);
-
-    EXPECT_TRUE(observer.messages.empty());
+    BattleVisitor reverse(bear);
+    werewolf.accept(reverse);
+    EXPECT_FALSE(reverse.defenderKilled());
 }

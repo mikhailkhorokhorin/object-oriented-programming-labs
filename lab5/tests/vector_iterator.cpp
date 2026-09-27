@@ -2,91 +2,64 @@
 
 #include <gtest/gtest.h>
 
-TEST(VectorIteratorTest, IterationOverIntArray) {
-    int arr[] = {10, 20, 30};
-    VectorIterator<int> it(arr);
-    VectorIterator<int> end(arr + 3);
+#include <algorithm>
+#include <array>
+#include <iterator>
+#include <type_traits>
 
+static_assert(std::forward_iterator<VectorIterator<int>>);
+static_assert(std::forward_iterator<VectorIterator<const int>>);
+static_assert(std::is_same_v<std::iterator_traits<VectorIterator<const int>>::value_type, int>);
+
+TEST(VectorIteratorTest, WalksArray) {
+    std::array<int, 3> values{10, 20, 30};
+    VectorIterator<int> it(values.data());
+    const VectorIterator<int> end(values.data() + values.size());
     int expected = 10;
-    while (it != end) {
+    for (; it != end; ++it) {
         EXPECT_EQ(*it, expected);
-        ++it;
         expected += 10;
     }
-
     EXPECT_EQ(it, end);
 }
 
 TEST(VectorIteratorTest, PrefixAndPostfixIncrement) {
-    int arr[] = {5, 15, 25};
-    VectorIterator<int> it(arr);
-
-    VectorIterator<int> it_post = it++;
-    EXPECT_EQ(*it_post, 5);
+    std::array<int, 3> values{5, 15, 25};
+    VectorIterator<int> it(values.data());
+    const VectorIterator<int> previous = it++;
+    EXPECT_EQ(*previous, 5);
     EXPECT_EQ(*it, 15);
-
-    VectorIterator<int> it_pre = ++it;
-    EXPECT_EQ(*it_pre, 25);
-    EXPECT_EQ(*it, 25);
+    const VectorIterator<int> next = ++it;
+    EXPECT_EQ(*next, 25);
+    EXPECT_EQ(next, it);
 }
 
-TEST(VectorIteratorTest, ArrowOperator) {
-    struct Point {
-        int x;
-        int y;
+TEST(VectorIteratorTest, ArrowAndWriteThrough) {
+    struct Pair {
+        int first;
+        int second;
     };
-    
-    Point points[] = {{1, 2}, {3, 4}};
-    VectorIterator<Point> it(points);
-
-    EXPECT_EQ(it->x, 1);
-    EXPECT_EQ(it->y, 2);
-
-    ++it;
-    EXPECT_EQ(it->x, 3);
-    EXPECT_EQ(it->y, 4);
+    std::array<Pair, 2> pairs{{{1, 2}, {3, 4}}};
+    VectorIterator<Pair> it(pairs.data());
+    EXPECT_EQ(it->second, 2);
+    it->first = 7;
+    EXPECT_EQ(pairs[0].first, 7);
+    EXPECT_EQ(it.get(), pairs.data());
 }
 
-TEST(VectorIteratorTest, ComparisonOperators) {
-    int arr[] = {1, 2};
-    VectorIterator<int> a(arr);
-    VectorIterator<int> b(arr);
-    VectorIterator<int> c(arr + 1);
-
-    EXPECT_TRUE(a == b);
-    EXPECT_FALSE(a != b);
-
-    EXPECT_TRUE(a != c);
-    EXPECT_FALSE(a == c);
+TEST(VectorIteratorTest, DefaultAndConstConversion) {
+    const VectorIterator<int> empty;
+    EXPECT_EQ(empty.get(), nullptr);
+    std::array<int, 2> values{1, 2};
+    const VectorIterator<int> mutableIt(values.data());
+    const VectorIterator<const int> constIt = mutableIt;
+    EXPECT_EQ(*constIt, 1);
 }
 
-TEST(VectorIteratorTest, EmptyArray) {
-    int arr[0];
-    VectorIterator<int> it(arr);
-    VectorIterator<int> end(arr);
-
-    EXPECT_EQ(it, end);
-}
-
-TEST(VectorIteratorTest, ConstArrayIteration) {
-    const int arr[] = {100, 200, 300};
-    VectorIterator<const int> it(arr);
-    VectorIterator<const int> end(arr + 3);
-
-    int expected = 100;
-    for (; it != end; ++it) {
-        EXPECT_EQ(*it, expected);
-        expected += 100;
-    }
-}
-
-TEST(VectorIteratorTest, MultipleIncrements) {
-    int arr[] = {1, 2, 3, 4};
-    VectorIterator<int> it(arr);
-
-    ++it;
-    it++;
-    ++it;
-
-    EXPECT_EQ(*it, 4);
+TEST(VectorIteratorTest, WorksWithStandardAlgorithms) {
+    std::array<int, 4> values{4, 8, 15, 16};
+    const VectorIterator<int> begin(values.data());
+    const VectorIterator<int> end(values.data() + values.size());
+    EXPECT_EQ(std::distance(begin, end), 4);
+    EXPECT_EQ(*std::find(begin, end, 15), 15);
 }

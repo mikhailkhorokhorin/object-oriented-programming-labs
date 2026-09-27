@@ -1,0 +1,7 @@
+add Bear Baloo 0 0
+add Werewolf Lupin 10 10
+add Rogue Robin 300 300
+add Bear Fozzie 310 305
+print
+battle 50
+print

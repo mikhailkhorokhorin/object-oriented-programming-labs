@@ -1,19 +1,18 @@
-include_directories(include)
+lab_library(lab4_core INTERFACE)
 
-add_executable(lab4_main
-    main.cpp
+lab_executable(lab4_main
+    SOURCES app/main.cpp
+    LINK lab4_core
 )
 
-add_executable(lab4_tests
-    tests/unit.cpp
-    tests/array.cpp
-    tests/point.cpp
-    tests/hexagon.cpp
-    tests/pentagon.cpp
-    tests/rhombus.cpp
+lab_tests(lab4_tests
+    SOURCES
+        tests/array.cpp
+        tests/e2e.cpp
+        tests/hexagon.cpp
+        tests/pentagon.cpp
+        tests/point.cpp
+        tests/rhombus.cpp
+    LINK lab4_core
+    BINARIES lab4_main
 )
-
-target_link_libraries(lab4_tests GTest::gtest_main)
-
-include(GoogleTest)
-gtest_discover_tests(lab4_tests)

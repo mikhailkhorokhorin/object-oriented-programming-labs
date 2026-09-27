@@ -1,35 +1,37 @@
 #pragma once
 
-#include <algorithm>
-#include <cstdio>
-#include <fstream>
+#include <cstddef>
+#include <filesystem>
 #include <iostream>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
-#include "battle_visitor.hpp"
 #include "npc.hpp"
-#include "npc_factory.hpp"
 #include "observer.hpp"
 
 class Dungeon {
-   private:
-    std::vector<std::shared_ptr<NPC>> npcs;
-    BattleVisitor battleVisitor;
+public:
+    static constexpr int MAP_SIZE = 500;
 
-   public:
-    explicit Dungeon(double battleRange = 50.0);
-
-    void addNPC(const std::string& type, const std::string& name, int x, int y);
+    bool addNPC(const std::string& type, const std::string& name, int x, int y);
+    bool addNPC(std::shared_ptr<NPC> npc);
 
     void addObserver(IObserver* observer);
 
-    void printAll() const;
+    void printAll(std::ostream& os = std::cout) const;
 
-    void battle();
+    std::size_t battle(double range);
 
-    void saveToFile(const std::string& filename) const;
-    void loadFromFile(const std::string& filename);
+    const std::vector<std::shared_ptr<NPC>>& getNPCs() const;
+
+    void saveToFile(const std::filesystem::path& path) const;
+    void loadFromFile(const std::filesystem::path& path);
+
+private:
+    std::vector<std::shared_ptr<NPC>> npcs_;
+    std::vector<IObserver*> observers_;
+
+    void notify(const std::string& message) const;
+    static bool isOnMap(const Point& position);
 };

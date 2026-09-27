@@ -1,6 +1,6 @@
 #include "werewolf.hpp"
 
-Werewolf::Werewolf(const std::string& name, const Point& pos) : NPC(name, pos) {
+Werewolf::Werewolf(const std::string& name, const Point& position) : NPC(name, position) {
 }
 
 std::string Werewolf::getType() const {
@@ -8,11 +8,11 @@ std::string Werewolf::getType() const {
 }
 
 int Werewolf::getMoveDistance() const {
-    return 40;
+    return MOVE_DISTANCE;
 }
 
 int Werewolf::getKillDistance() const {
-    return 5;
+    return KILL_DISTANCE;
 }
 
 bool Werewolf::kills(const NPC& other) const {
