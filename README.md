@@ -1,7 +1,5 @@
 # Object-Oriented Programming Labs
 
-C++20 labs on classes, inheritance, templates, allocators, design patterns and multithreading.
-
 | No. | Topic |
 | --- | --- |
 | 1 | [First Program: Removing Vowels](lab1/) |
